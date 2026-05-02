@@ -1,0 +1,16 @@
+# Web-фреймворк и ASGI-сервер
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+
+# Работа с данными и изображениями
+numpy==1.26.4
+Pillow==10.4.0
+
+# Валидация данных (используется FastAPI)
+pydantic==2.9.2
+
+# Глубокое обучение (TensorFlow/Keras — загрузка .h5 моделей)
+tensorflow==2.17.0
+
+# Работа с файлами multipart/form-data
+python-multipart==0.0.12
