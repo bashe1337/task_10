@@ -11,7 +11,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Копируем все файлы проекта в контейнер
+# Копируем все файлы проекта в контейнер (включая папку models, если запускаете билд из корня)
 COPY . .
 
 # Открываем порт 7860 (стандартный порт для Hugging Face Spaces)
