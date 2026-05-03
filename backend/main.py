@@ -105,28 +105,28 @@ async def predict_image(
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-@app.get("/", tags=["service"])
-def root():
-    return {
-        "service": "classification-api",
-        "predict_endpoint": "/predict",
-        "health_endpoint": "/health",
-        "supported_tasks": ["images", "digits"],
-    }
+# @app.get("/", tags=["service"])
+# def root():
+#     return {
+#         "service": "classification-api",
+#         "predict_endpoint": "/predict",
+#         "health_endpoint": "/health",
+#         "supported_tasks": ["images", "digits"],
+#     }
 
 
-@app.get("/health", response_model=HealthResponse, tags=["service"])
-def health():
-    return HealthResponse(
-        status="ok",
-        models_loaded={
-            "images": models["images"] is not None,
-            "digits": models["digits"] is not None,
-        },
-        image_classes=IMAGE_CLASSES,
-        digit_classes=DIGIT_CLASSES,
-        image_size=IMAGE_SIZE,
-        digit_size=DIGIT_SIZE,
-    )
+# @app.get("/health", response_model=HealthResponse, tags=["service"])
+# def health():
+#     return HealthResponse(
+#         status="ok",
+#         models_loaded={
+#             "images": models["images"] is not None,
+#             "digits": models["digits"] is not None,
+#         },
+#         image_classes=IMAGE_CLASSES,
+#         digit_classes=DIGIT_CLASSES,
+#         image_size=IMAGE_SIZE,
+#         digit_size=DIGIT_SIZE,
+#     )
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=7860, reload=True)
