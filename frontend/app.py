@@ -15,14 +15,14 @@ DEFAULT_API_URL = "https://task-10-y0wh.onrender.com"
 TASK_OPTIONS = {
     "Images": {
         "task": "images",
-        "classes_label": "машина, кошка, собака, цветок, лошадь",
+        "classes_label": "машина, котик, собачка, цветочек, лошадь",
         "hint": "Классификация изображений по выбранным классам.",
         "visible_classes": ["cars", "cats", "dogs", "flowers", "horses"],
         "display_names": {
             "cars": "машина",
-            "cats": "кошка",
-            "dogs": "собака",
-            "flowers": "цветок",
+            "cats": "котик",
+            "dogs": "собачка",
+            "flowers": "цветочек",
             "horses": "лошадь",
             "human": "человек",
             "bike": "велосипед",
