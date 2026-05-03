@@ -76,7 +76,7 @@ def preprocess_image(image_bytes: bytes) -> np.ndarray:
     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     image = image.resize(IMAGE_SIZE)
     array = np.asarray(image, dtype=np.float32)
-    array = preprocess_input(array)
+    # array = preprocess_input(array)
     return np.expand_dims(array, axis=0)
 
 
