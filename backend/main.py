@@ -15,7 +15,7 @@ from pydantic import BaseModel
 IMAGE_MODEL_PATH = Path("models/best_classification_model.keras")
 DIGITS_MODEL_PATH = Path("models/digits_model.keras")
 
-IMAGE_CLASSES = ["cars", "cats", "dogs", "flowers", "horses", "human"]
+IMAGE_CLASSES = ["cars", "cats", "dogs", "flowers", "horses", "human", "bike"]
 DIGIT_CLASSES = [str(i) for i in range(10)]
 
 IMAGE_SIZE = (224, 224)
@@ -86,17 +86,17 @@ def preprocess_digit(image_bytes: bytes) -> np.ndarray:
     return np.expand_dims(array, axis=0)
 
 
-# def validate_output(predictions: np.ndarray, classes: list[str]) -> np.ndarray:
-#     probs = np.asarray(predictions[0], dtype=np.float32)
-#     if probs.shape[0] != len(classes):
-#         raise HTTPException(
-#             status_code=500,
-#             detail=(
-#                 f"Размер выхода модели ({probs.shape[0]}) не совпадает с числом классов "
-#                 f"({len(classes)})."
-#             ),
-#         )
-#     return probs
+def validate_output(predictions: np.ndarray, classes: list[str]) -> np.ndarray:
+    probs = np.asarray(predictions[0], dtype=np.float32)
+    if probs.shape[0] != len(classes):
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Размер выхода модели ({probs.shape[0]}) не совпадает с числом классов "
+                f"({len(classes)})."
+            ),
+        )
+    return probs
 
 
 @app.get("/", tags=["service"])
