@@ -1,12 +1,66 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form
-from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
-from PIL import Image
+from __future__ import annotations
+
 import io
+import time
+from contextlib import asynccontextmanager
+from pathlib import Path
+
 import numpy as np
 import tensorflow as tf
+from PIL import Image, ImageOps
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 
-app = FastAPI(title="Multi-Model Image Classification API")
+IMAGE_MODEL_PATH = Path("models/model_task5.keras")
+DIGITS_MODEL_PATH = Path("models/digits_model.keras")
+
+IMAGE_CLASSES = ["bike", "cars", "cats", "dogs", "flowers", "horses", "human"]
+DIGIT_CLASSES = [str(i) for i in range(10)]
+
+IMAGE_SIZE = (224, 224)
+DIGIT_SIZE = (28, 28)
+ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/bmp"}
+
+models: dict[str, tf.keras.Model | None] = {"images": None, "digits": None}
+
+
+class PredictionResponse(BaseModel):
+    task: str
+    predicted_class: str
+    predicted_index: int
+    confidence: float
+    probabilities: dict[str, float]
+    inference_time_ms: float
+
+
+class HealthResponse(BaseModel):
+    status: str
+    models_loaded: dict[str, bool]
+    image_classes: list[str]
+    digit_classes: list[str]
+    image_size: tuple[int, int]
+    digit_size: tuple[int, int]
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if IMAGE_MODEL_PATH.exists():
+        models["images"] = tf.keras.models.load_model(IMAGE_MODEL_PATH)
+    if DIGITS_MODEL_PATH.exists():
+        models["digits"] = tf.keras.models.load_model(DIGITS_MODEL_PATH)
+    yield
+    models["images"] = None
+    models["digits"] = None
+
+
+app = FastAPI(
+    title="Classification API",
+    version="2.1.0",
+    description="API для классификации изображений и рукописных цифр.",
+    lifespan=lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,28 +69,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Вы можете положить обе модели в папку models/
-MODEL_IMAGES_PATH = "models/model_task5.keras"
-MODEL_DIGITS_PATH = "models/digits_model.keras"  # Укажите реальное имя модели для цифр
-
-CLASS_NAMES_IMAGES = ['bike', 'cars', 'cats', 'dogs', 'flowers', 'horses', 'human']
-CLASS_NAMES_DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
-
-models = {}
-
-# Загрузка моделей (FastAPI запустится, даже если одной из них нет - просто выдаст Warning)
-try:
-    models["images"] = tf.keras.models.load_model(MODEL_IMAGES_PATH)
-    print("Image classification model ('images') loaded successfully!")
-except Exception as e:
-    print(f"Warning: Image model not loaded. {e}")
-
-try:
-    models["digits"] = tf.keras.models.load_model(MODEL_DIGITS_PATH)
-    print("Digit classification model ('digits') loaded successfully!")
-except Exception as e:
-    print(f"Warning: Digit model not loaded. {e}")
 
 
 def preprocess_for_images(img: Image.Image):
@@ -49,84 +81,99 @@ def preprocess_for_images(img: Image.Image):
     
     return np.expand_dims(arr, axis=0)
 
-def preprocess_for_digits(img: Image.Image):
-    """Предобработка черно-белых цифр (MNIST)"""
-    # MNIST обычно состоит из белых цифр на черном фоне 28x28 (Grayscale)
-    if img.mode != "L":
-        img = img.convert("L")
-    img = img.resize((28, 28))
-    arr = np.array(img) / 255.0
-    
-    # Поскольку canvas выдает нам черные рисунки на белом фоне (или наоборот),
-    # может понадобиться инвертировать цвет пикселей для MNIST:
-    # arr = 1.0 - arr # [Раскомментируйте, если предсказания цифр ошибаются]
-    
-    # Формат зависит от того как вы обучали: обычно (1, 28, 28) или (1, 28, 28, 1)
-    arr = np.expand_dims(arr, axis=-1) # добавляем канал
-    return np.expand_dims(arr, axis=0) # добавляем батч
 
-@app.post("/predict/")
-async def predict_image(
+def preprocess_digit(image_bytes: bytes) -> np.ndarray:
+    image = Image.open(io.BytesIO(image_bytes)).convert("L")
+    image = ImageOps.invert(image)
+    image = image.resize(DIGIT_SIZE)
+    array = np.asarray(image, dtype=np.float32) / 255.0
+    array = np.expand_dims(array, axis=-1)
+    return np.expand_dims(array, axis=0)
+
+
+def validate_output(predictions: np.ndarray, classes: list[str]) -> np.ndarray:
+    probs = np.asarray(predictions[0], dtype=np.float32)
+    if probs.shape[0] != len(classes):
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Размер выхода модели ({probs.shape[0]}) не совпадает с числом классов "
+                f"({len(classes)})."
+            ),
+        )
+    return probs
+
+
+@app.get("/", tags=["service"])
+def root():
+    return {
+        "service": "classification-api",
+        "predict_endpoint": "/predict",
+        "health_endpoint": "/health",
+        "supported_tasks": ["images", "digits"],
+    }
+
+
+@app.get("/health", response_model=HealthResponse, tags=["service"])
+def health():
+    return HealthResponse(
+        status="ok",
+        models_loaded={
+            "images": models["images"] is not None,
+            "digits": models["digits"] is not None,
+        },
+        image_classes=IMAGE_CLASSES,
+        digit_classes=DIGIT_CLASSES,
+        image_size=IMAGE_SIZE,
+        digit_size=DIGIT_SIZE,
+    )
+
+
+@app.post("/predict", response_model=PredictionResponse, tags=["prediction"])
+async def predict(
     file: UploadFile = File(...),
-    model_type: str = Form(...) # Теперь требуется параметр из формы
+    task: str = Form(...),
 ):
-    if model_type not in models or models[model_type] is None:
-        raise HTTPException(status_code=500, detail=f"Модель '{model_type}' не найдена или не загружена на сервере.")
-    
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(status_code=415, detail=f"Неподдерживаемый тип файла: {file.content_type}")
+
+    if task not in {"images", "digits"}:
+        raise HTTPException(status_code=400, detail="task должен быть 'images' или 'digits'.")
+
+    if models[task] is None:
+        expected = IMAGE_MODEL_PATH if task == "images" else DIGITS_MODEL_PATH
+        raise HTTPException(status_code=500, detail=f"Модель для task='{task}' не загружена. Ожидается файл: {expected}")
+
+    image_bytes = await file.read()
+    if not image_bytes:
+        raise HTTPException(status_code=400, detail="Файл пустой.")
+
     try:
-        contents = await file.read()
-        image = Image.open(io.BytesIO(contents))
-        
-        if model_type == "images":
-            processed_image = preprocess_for_images(image)
-            classes = CLASS_NAMES_IMAGES
-        elif model_type == "digits":
-            processed_image = preprocess_for_digits(image)
-            classes = CLASS_NAMES_DIGITS
+        if task == "images":
+            batch = preprocess_image(image_bytes)
+            classes = IMAGE_CLASSES
         else:
-            raise ValueError("Unknown model_type")
-            
-        # Получаем предсказания
-        predictions = models[model_type].predict(processed_image)
-        
-        predicted_class_index = int(np.argmax(predictions[0]))
-        predicted_class_name = classes[predicted_class_index]
-        
-        confidence = float(np.max(predictions[0]))
-        all_probabilities = predictions[0].tolist()
-        
-        return {
-            "model_used": model_type,
-            "predicted_class_index": predicted_class_index,
-            "predicted_class_name": predicted_class_name,
-            "confidence": confidence,
-            "all_probabilities": all_probabilities,
-            "classes": classes
-        }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-# @app.get("/", tags=["service"])
-# def root():
-#     return {
-#         "service": "classification-api",
-#         "predict_endpoint": "/predict",
-#         "health_endpoint": "/health",
-#         "supported_tasks": ["images", "digits"],
-#     }
+            batch = preprocess_digit(image_bytes)
+            classes = DIGIT_CLASSES
 
+        start = time.perf_counter()
+        predictions = models[task].predict(batch, verbose=0)
+        elapsed = (time.perf_counter() - start) * 1000
+        probs = validate_output(predictions, classes)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Ошибка обработки изображения: {exc}")
 
-# @app.get("/health", response_model=HealthResponse, tags=["service"])
-# def health():
-#     return HealthResponse(
-#         status="ok",
-#         models_loaded={
-#             "images": models["images"] is not None,
-#             "digits": models["digits"] is not None,
-#         },
-#         image_classes=IMAGE_CLASSES,
-#         digit_classes=DIGIT_CLASSES,
-#         image_size=IMAGE_SIZE,
-#         digit_size=DIGIT_SIZE,
-#     )
-if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=7860, reload=True)
+    predicted_index = int(np.argmax(probs))
+    predicted_class = classes[predicted_index]
+    confidence = float(probs[predicted_index])
+
+    return PredictionResponse(
+        task=task,
+        predicted_class=predicted_class,
+        predicted_index=predicted_index,
+        confidence=round(confidence, 6),
+        probabilities={name: round(float(prob), 6) for name, prob in zip(classes, probs)},
+        inference_time_ms=round(elapsed, 3),
+    )
