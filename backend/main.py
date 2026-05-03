@@ -12,7 +12,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-IMAGE_MODEL_PATH = Path("models/best_classification_model.keras")
+IMAGE_MODEL_PATH = Path("models/model_task5.keras")
 DIGITS_MODEL_PATH = Path("models/digits_model.keras")
 
 IMAGE_CLASSES = ["cars", "cats", "dogs", "flowers", "horses", "human", "bike"]
