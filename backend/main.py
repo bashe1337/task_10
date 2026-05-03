@@ -86,17 +86,17 @@ def preprocess_digit(image_bytes: bytes) -> np.ndarray:
     return np.expand_dims(array, axis=0)
 
 
-def validate_output(predictions: np.ndarray, classes: list[str]) -> np.ndarray:
-    probs = np.asarray(predictions[0], dtype=np.float32)
-    if probs.shape[0] != len(classes):
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                f"Размер выхода модели ({probs.shape[0]}) не совпадает с числом классов "
-                f"({len(classes)})."
-            ),
-        )
-    return probs
+# def validate_output(predictions: np.ndarray, classes: list[str]) -> np.ndarray:
+#     probs = np.asarray(predictions[0], dtype=np.float32)
+#     if probs.shape[0] != len(classes):
+#         raise HTTPException(
+#             status_code=500,
+#             detail=(
+#                 f"Размер выхода модели ({probs.shape[0]}) не совпадает с числом классов "
+#                 f"({len(classes)})."
+#             ),
+#         )
+#     return probs
 
 
 @app.get("/", tags=["service"])
