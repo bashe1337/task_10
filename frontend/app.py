@@ -14,7 +14,7 @@ DEFAULT_API_URL = "https://task-10-y0wh.onrender.com"
 TASK_OPTIONS = {
     "Images": {
         "task": "images",
-        "classes": "cars, cats, dogs, flowers, horses, human",
+        "classes": "машина, кошка, собака, цветок, лошадь, человек",
         "canvas_bg": "#ffffff",
         "stroke": "#111111",
         "brush": 10,
@@ -49,12 +49,7 @@ st.markdown(
     .block-container { padding-top: 2rem; padding-bottom: 2rem; max-width: 1180px; }
     h1, h2, h3, h4, h5, h6, p, label, div, span { color: var(--text); }
     .muted { color: var(--muted); font-size: 0.98rem; margin-bottom: 1.25rem; }
-    .panel {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 18px;
-        padding: 1.1rem 1.15rem;
-    }
+\
     .metric {
         background: var(--panel-2);
         border: 1px solid var(--border);
@@ -104,7 +99,7 @@ prepared_image = None
 
 with left:
     st.markdown("<div class='panel'>", unsafe_allow_html=True)
-    mode = st.radio("Input", ["Upload file", "Draw on canvas"], horizontal=True)
+    mode = st.radio("Input", ["Upload file", "Нарисовать"], horizontal=True)
 
     if mode == "Upload file":
         uploaded_file = st.file_uploader("Select image", type=["png", "jpg", "jpeg", "webp", "bmp"])
