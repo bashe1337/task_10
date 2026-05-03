@@ -16,7 +16,7 @@ from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 IMAGE_MODEL_PATH = Path("models/model_task5.keras")
 DIGITS_MODEL_PATH = Path("models/digits_model.keras")
 
-IMAGE_CLASSES = ["cars", "cats", "dogs", "flowers", "horses", "human", "bike"]
+IMAGE_CLASSES = ["bike", "cars", "cats", "dogs", "flowers", "horses", "human"]
 DIGIT_CLASSES = [str(i) for i in range(10)]
 
 IMAGE_SIZE = (224, 224)
