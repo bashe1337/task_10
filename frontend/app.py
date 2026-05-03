@@ -99,10 +99,10 @@ prepared_image = None
 
 with left:
     st.markdown("<div class='panel'>", unsafe_allow_html=True)
-    mode = st.radio("Input", ["Upload file", "Нарисовать"], horizontal=True)
+    mode = st.radio("Input", ["Загрузить файл", "Нарисовать"], horizontal=True)
 
-    if mode == "Upload file":
-        uploaded_file = st.file_uploader("Select image", type=["png", "jpg", "jpeg", "webp", "bmp"])
+    if mode == "Загрузить файл":
+        uploaded_file = st.file_uploader("Выбрать картинку", type=["png", "jpg", "jpeg", "webp", "bmp"])
         if uploaded_file is not None:
             prepared_image = Image.open(uploaded_file).convert("RGB")
             st.image(prepared_image, use_container_width=True)
@@ -139,7 +139,7 @@ with right:
 
 if send:
     if prepared_image is None:
-        right.warning("Load an image or draw on the canvas first.")
+        right.warning("Загрузите картинку или нарисуйче цифру.")
     else:
         buffer = io.BytesIO()
         prepared_image.save(buffer, format="PNG")
