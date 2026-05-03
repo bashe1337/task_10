@@ -11,6 +11,7 @@ from PIL import Image, ImageOps
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 
 IMAGE_MODEL_PATH = Path("models/model_task5.keras")
 DIGITS_MODEL_PATH = Path("models/digits_model.keras")
@@ -72,8 +73,9 @@ app.add_middleware(
 
 def preprocess_image(image_bytes: bytes) -> np.ndarray:
     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    image = image.resize(IMAGE_SIZE)
-    array = np.asarray(image, dtype=np.float32) / 255.0
+    image = image.resize((224, 224))
+    array = np.asarray(image, dtype=np.float32)
+    array = preprocess_input(array)
     return np.expand_dims(array, axis=0)
 
 
