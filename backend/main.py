@@ -16,6 +16,7 @@ from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 IMAGE_MODEL_PATH = Path("models/model_task5.keras")
 DIGITS_MODEL_PATH = Path("models/digits_model.keras")
 
+# Если обучали через flow_from_directory без classes=..., порядок обычно алфавитный
 IMAGE_CLASSES = ["bike", "cars", "cats", "dogs", "flowers", "horses", "human"]
 DIGIT_CLASSES = [str(i) for i in range(10)]
 
@@ -57,7 +58,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Classification API",
-    version="2.1.0",
+    version="2.2.0",
     description="API для классификации изображений и рукописных цифр.",
     lifespan=lifespan,
 )
@@ -71,15 +72,12 @@ app.add_middleware(
 )
 
 
-def preprocess_image(img: Image.Image):
-    """Предобработка цветных изображений (7 классов)"""
-    if img.mode != "RGB":
-        img = img.convert("RGB")
-    
-    img = img.resize((224, 224)) 
-    arr = np.array(img, dtype=np.float32) 
-    
-    return np.expand_dims(arr, axis=0)
+def preprocess_image(image_bytes: bytes) -> np.ndarray:
+    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    image = image.resize(IMAGE_SIZE)
+    array = np.asarray(image, dtype=np.float32)
+    array = preprocess_input(array)
+    return np.expand_dims(array, axis=0)
 
 
 def preprocess_digit(image_bytes: bytes) -> np.ndarray:
@@ -97,8 +95,8 @@ def validate_output(predictions: np.ndarray, classes: list[str]) -> np.ndarray:
         raise HTTPException(
             status_code=500,
             detail=(
-                f"Размер выхода модели ({probs.shape[0]}) не совпадает с числом классов "
-                f"({len(classes)})."
+                f"Размер выхода модели ({probs.shape[0]}) не совпадает "
+                f"с числом классов ({len(classes)})."
             ),
         )
     return probs
@@ -135,14 +133,23 @@ async def predict(
     task: str = Form(...),
 ):
     if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(status_code=415, detail=f"Неподдерживаемый тип файла: {file.content_type}")
+        raise HTTPException(
+            status_code=415,
+            detail=f"Неподдерживаемый тип файла: {file.content_type}",
+        )
 
     if task not in {"images", "digits"}:
-        raise HTTPException(status_code=400, detail="task должен быть 'images' или 'digits'.")
+        raise HTTPException(
+            status_code=400,
+            detail="task должен быть 'images' или 'digits'.",
+        )
 
     if models[task] is None:
         expected = IMAGE_MODEL_PATH if task == "images" else DIGITS_MODEL_PATH
-        raise HTTPException(status_code=500, detail=f"Модель для task='{task}' не загружена. Ожидается файл: {expected}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Модель для task='{task}' не загружена. Ожидается файл: {expected}",
+        )
 
     image_bytes = await file.read()
     if not image_bytes:
