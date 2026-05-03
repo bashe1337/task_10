@@ -83,13 +83,6 @@ st.markdown(
         margin-bottom: 1.25rem;
     }
 
-    .panel {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 18px;
-        padding: 1.1rem 1.15rem;
-    }
-
     .metric {
         background: var(--panel-2);
         border: 1px solid var(--border);
