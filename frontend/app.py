@@ -10,7 +10,7 @@ from streamlit_drawable_canvas import st_canvas
 
 st.set_page_config(page_title="Classifier", layout="wide")
 
-DEFAULT_API_URL = "https://task-10-y0wh.onrender.com/predict"
+DEFAULT_API_URL = "https://task-10-y0wh.onrender.com"
 TASK_OPTIONS = {
     "Images": {
         "task": "images",
