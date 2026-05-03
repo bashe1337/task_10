@@ -71,7 +71,7 @@ app.add_middleware(
 )
 
 
-def preprocess_for_images(img: Image.Image):
+def preprocess_image(img: Image.Image):
     """Предобработка цветных изображений (7 классов)"""
     if img.mode != "RGB":
         img = img.convert("RGB")
